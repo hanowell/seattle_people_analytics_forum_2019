@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml" lang="" xml:lang="">
+  <head>
+    <title>People analytics and event history analysis</title>
+    <meta charset="utf-8" />
+    <meta name="author" content=".orange[Ben Hanowell] | Data Scientist | Amazon Flex Driver Science" />
+    <link href="libs/remark-css-0.0.1/default.css" rel="stylesheet" />
+    <link href="libs/remark-css-0.0.1/default-fonts.css" rel="stylesheet" />
+    <script src="libs/htmlwidgets-1.3/htmlwidgets.js"></script>
+    <script src="libs/jquery-1.12.4/jquery.min.js"></script>
+    <link href="libs/datatables-css-0.0.0/datatables-crosstalk.css" rel="stylesheet" />
+    <script src="libs/datatables-binding-0.9/datatables.js"></script>
+    <link href="libs/dt-core-1.10.19/css/jquery.dataTables.min.css" rel="stylesheet" />
+    <link href="libs/dt-core-1.10.19/css/jquery.dataTables.extra.css" rel="stylesheet" />
+    <script src="libs/dt-core-1.10.19/js/jquery.dataTables.min.js"></script>
+    <link href="libs/crosstalk-1.0.0/css/crosstalk.css" rel="stylesheet" />
+    <script src="libs/crosstalk-1.0.0/js/crosstalk.min.js"></script>
+    <script src="libs/pymjs-1.3.2/pym.v1.js"></script>
+    <script src="libs/widgetframe-binding-0.3.1/widgetframe.js"></script>
+    <link rel="stylesheet" href="seattle_people_analytics_forum_2019.css" type="text/css" />
+  </head>
+  <body>
+    <textarea id="source">
+class: center, middle, inverse, title-slide
+
+# People analytics<br>and event history analysis
+## .teal[or: How I learned to stop worrying<br>and love cumulative incidence functions]
+### .orange[Ben Hanowell] | Data Scientist | Amazon Flex Driver Science
+### Seattle People Analytics Forum<br>7 October 2019
+
+---
+
+
+
+
+name: disclaimer
+class: middle, inverse
+
+### Everything I say today is my own personal opinion
+
+--
+
+### I don't speak for Amazon
+
+--
+
+### But .amazon-orange[Flex Driver Science Team] is the bee's knees. You could join us!
+
+![The bee's knee](./beeknee.jpg)
+&lt;img src="./beeknee.jpg" width="100%" /&gt;
+
+---
+
+name: ice-breaker
+class: middle
+
+# Raise your hand if your organization uses...
+
+--
+
+- .orange[**avg. time to fill job reqs**] to gauge .teal[**recruiting performance**]
+
+--
+
+- .orange[**avg. time to promotion**] to gauge .teal[**upward mobility**]
+
+--
+
+- .orange[**avg. time to termination**] to gauge .teal[**employee retention**]
+
+---
+
+name: stoking-controversy
+class: middle
+
+# Now let's stoke some .controversy[controversy]
+
+---
+
+name: first-controversial-statement
+class: middle, inverse
+
+# Many organizations calculate&lt;br&gt;these metrics incorrectly
+
+---
+
+name: second-controversial-statement
+class: inverse, center, middle
+
+## Not .controversy[controversial] enough for you?
+
+--
+
+![Morpheus tells it like it is.](./morpheus_tells_it_like_it_is.jpg)
+
+--
+
+### (except avg. employee tenure... sometimes)
+
+---
+
+name: before-we-poop
+class: middle, inverse
+
+# 💩 But before we poop all over cherished people metrics... 💩
+
+--
+
+C'mon, Hanowell! These metrics are:
+
+- .teal[**Easy**] to understand
+- .teal[**Easy**] to calculate
+- It's .orange[**what people actually want to know**]
+
+---
+
+name: should-we-do-easy-stuff
+class: middle, center
+
+# .teal[**Easy**] to understand
+
+--
+
+# .teal[**Easy**] to calculate
+
+--
+
+## 🤔 Should we do stuff just because it's easy? 🤔
+
+---
+
+name: what-people-wanna-know
+class: middle, center
+
+# It's .orange[**what people actually want to know**]
+
+--
+
+# 🤔 Is it? 🤔
+
+---
+
+name: agenda
+class: middle
+
+- What's the matter with avg. time to (whatever)?
+
+--
+
+- Suggest a better way:
+
+--
+
+# .center[🙌 .hero-shot[EVENT&lt;br&gt;HISTORY&lt;br&gt;ANALYSIS] 🙌]
+
+--
+
+.right[Survival analysis]
+.right[Competing risks]
+.right[Cure models]
+.right[Repeated event models]
+.right[Multi-state models]
+
+---
+
+name: whats-the-matter-with-whatever
+
+### What's the matter with avg. time to (whatever)?
+
+---
+
+name: whats-the-matter-with-avg-time-to-fill
+
+### What's the matter with .orange[**avg. time to fill a job requisition**]?
+
+---
+
+template: whats-the-matter-with-avg-time-to-fill
+
+### For now, assume this metric .controversy[isn't utterly meaningless].
+
+---
+
+template: whats-the-matter-with-avg-time-to-fill
+
+### .orange[**The problem**] is when you calculate it .teal[**using only filled job requisitions**]
+
+---
+
+name: toy-example
+template: whats-the-matter-with-avg-time-to-fill
+
+### Toy example
+
+---
+
+template: toy-example
+
+- Suppose it's back at the end of 2018
+- We had three job requisitions open at any point that year:
+
+<div id="htmlwidget-9ca4873e54b110cd2994" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-9ca4873e54b110cd2994">{"x":{"filter":"none","data":[[1,2,3],["2018-06-01","2018-03-01","2017-10-01"],["2018-09-01","2018-04-01",null],[3,1,null]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Requisition ID<\/th>\n      <th>Date opened<\/th>\n      <th>Date filled<\/th>\n      <th>Time to fill (months)<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,3]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+template: toy-example
+
+- Let's throw out the un-filled req cuz we don't know it's fill time, right?
+
+<div id="htmlwidget-9e13f096d31c00fede31" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-9e13f096d31c00fede31">{"x":{"filter":"none","data":[[1,2],["2018-06-01","2018-03-01"],["2018-09-01","2018-04-01"],[3,1]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Requisition ID<\/th>\n      <th>Date opened<\/th>\n      <th>Date filled<\/th>\n      <th>Time to fill (months)<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,3]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+
+--
+
+- The .orange[**avg. time to fill**] is then just 2 months.
+
+--
+
+- The .orange[**monthly fill rate in 2018**], assuming it was constant (.controversy[LOL]): `\(\frac{1}{2}\)`&lt;br&gt;
+(half a req filled for every month a req is open)
+
+--
+
+- The .orange[**annual fill rate**] is the monthly fill rate `\(\times\)` 12 months:&lt;br&gt; `\(\frac{1}{2} \times 12 = 6\)` reqs filled for every year a req is open
+
+--
+
+# .center[.hero-shot[AWESOME]]
+
+---
+
+name: wait-a-second
+class: inverse, middle, center
+
+![Wait a second...](./wait-a-second.jpg)
+
+---
+
+template: toy-example
+
+Aren't we forgetting someone?
+
+<div id="htmlwidget-af793c94d8a3ad016e85" style="width:100%;height:auto;" class="datatables html-widget"></div>
+<script type="application/json" data-for="htmlwidget-af793c94d8a3ad016e85">{"x":{"filter":"none","data":[[1,2,3],[3,1,null],[3,1,14],[3,1,12]],"container":"<table class=\"display\">\n  <thead>\n    <tr>\n      <th>Requisition ID<\/th>\n      <th>Time to fill (months)<\/th>\n      <th>Requisition months<\/th>\n      <th>Requisition months (2018)<\/th>\n    <\/tr>\n  <\/thead>\n<\/table>","options":{"dom":"t","columnDefs":[{"className":"dt-right","targets":[0,1,2,3]}],"order":[],"autoWidth":false,"orderClasses":false}},"evals":[],"jsHooks":[]}</script>
+
+--
+
+The **actual** monthly fill rate is:&lt;br&gt;
+.center[$$\frac{\text{number of reqs filled in 2018}}{\text{total number of months requisitions were open during 2018}}$$]
+
+--
+
+Which is `\(\frac{2}{3 + 1 + 12} = \frac{2}{16} = 0.125\)`
+
+---
+
+name: no-wonder-they-are-pissed
+class: inverse, middle, center
+
+.h1[.orange[**avg. time to fill**]] = `\(\frac{1}{0.125} \approx\)` .h1[.controversy[8 months]]
+
+--
+
+# NOT 2 MONTHS
+
+--
+
+Recruiting takes .controversy[4 times longer] than we're telling the hiring managers.
+
+--
+
+# 🤔 No wonder they're pissed.
+
+---
+
+name: do-not-do-that
+
+# IN GENERAL
+
+## `if:`
+
+- you .teal[**use only cases where (whatever) happened**]&lt;br&gt;to measure .orange[**avg. time**] to (whatever)
+
+--
+
+## `then:`
+
+- you will .controversy[underestimate] the .orange[**avg. time**] to (whatever)
+- you will .controversy[overestimate] the .orange[**rate**] at which (whatever) occurs
+
+--
+
+# .center[.hero-shot[SO DON'T DO THAT.]]
+
+---
+
+name: how-dare-you-sir
+class: inverse, middle, center
+
+Analytically-savvy audience members are thinking:
+
+![How dare you, sir!](./how-dare-you-sir.jpg)
+
+---
+
+name: survival-analysis-example
+
+## Survival analysis example: Employee tenure
+
+---
+
+template: survival-analysis-example
+
+- **Survival curve** `\(S(t)\)`: Chance employee stays at company beyond time `\(t\)`
+
+--
+
+&lt;img src="seattle_people_analytics_forum_2019_files/figure-html/unnamed-chunk-5-1.png" width="100%" /&gt;
+
+---
+
+template: survival-analysis-example
+
+- .orange[**Avg. tenure**] is the sum of `\(S(t)\)` across time points `\(t\)`, that is `\(\sum_t S(t)\)`
+
+&lt;img src="seattle_people_analytics_forum_2019_files/figure-html/unnamed-chunk-6-1.png" width="100%" /&gt;
+
+---
+
+name: cumulative-incidence-function
+template: survival-analysis-example
+
+- .teal[**Cumulative incidence function**] `\(C(t)\)`: Chance employee leaves by time `\(t\)`
+
+---
+
+template: cumulative-incidence-function
+
+&lt;img src="seattle_people_analytics_forum_2019_files/figure-html/unnamed-chunk-7-1.png" width="100%" /&gt;
+
+---
+
+name: cumulative-incidence-segue
+class: inverse
+
+# A brief segue on cumulative incidence
+
+- "What's the chance that (whatever) will happen by (some target date)?"
+
+--
+
+    - **Hiring manager:** "Will I fill this role in time to finish this project?"
+    
+--
+
+    - **Finance:** "Will we meet our target headcount by mid-year?"
+    
+--
+
+    - **Job candidate:** "What's the chance I'll get promoted within a year?"
+    
+--
+
+# .center[
+  .hero-shot[.orange[It's what people] (actually) .orange[want to know]]
+]
+
+---
+
+template: cumulative-incidence-function
+
+&lt;img src="seattle_people_analytics_forum_2019_files/figure-html/unnamed-chunk-8-1.png" width="100%" /&gt;
+
+---
+
+template: cumulative-incidence-function
+
+&lt;img src="seattle_people_analytics_forum_2019_files/figure-html/unnamed-chunk-9-1.png" width="100%" /&gt;
+
+
+---
+
+name: fun-fact-about-cumulative-incidence
+class: inverse
+
+# "Fun" fact about .teal[**cumulative incidence**]
+
+## It's just the opposite of the .orange[**survival function**]! `\(C(t) = 1 - S(t)\)`
+
+--
+
+## .center[.controversy[BUT ONLY IF THERE ARE NO COMPETING RISKS]]
+
+---
+
+name: what-are-competing-risks
+
+## What are competing risks?
+
+---
+
+template: what-are-competing-risks
+
+### Voluntary vs. involuntary termination
+
+<div id="htmlwidget-dc1d20c80ada3de4fd27" style="width:100%;height:400px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-dc1d20c80ada3de4fd27">{"x":{"url":"seattle_people_analytics_forum_2019_files/figure-html//widgets/widget_unnamed-chunk-10.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+template: what-are-competing-risks
+
+### Regrettable vs. un-regrettable termination
+
+<div id="htmlwidget-8e544bf70434ccf10f96" style="width:100%;height:400px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-8e544bf70434ccf10f96">{"x":{"url":"seattle_people_analytics_forum_2019_files/figure-html//widgets/widget_unnamed-chunk-11.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+template: what-are-competing-risks
+
+### First promotion vs. termination
+
+<div id="htmlwidget-157f8cf75bd02e6b2541" style="width:100%;height:400px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-157f8cf75bd02e6b2541">{"x":{"url":"seattle_people_analytics_forum_2019_files/figure-html//widgets/widget_unnamed-chunk-12.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+template: what-are-competing-risks
+
+### First promotion vs. termination
+
+<div id="htmlwidget-31883c6fe5654446c510" style="width:100%;height:400px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-31883c6fe5654446c510">{"x":{"url":"seattle_people_analytics_forum_2019_files/figure-html//widgets/widget_unnamed-chunk-13.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+template: what-are-competing-risks
+
+### First promotion vs. termination
+
+<div id="htmlwidget-73a89367a9a560396cdd" style="width:100%;height:400px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-73a89367a9a560396cdd">{"x":{"url":"seattle_people_analytics_forum_2019_files/figure-html//widgets/widget_unnamed-chunk-14.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+template: what-are-competing-risks
+
+### First promotion vs. termination
+
+<div id="htmlwidget-a136c07dbe1f8d9322ce" style="width:100%;height:400px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-a136c07dbe1f8d9322ce">{"x":{"url":"seattle_people_analytics_forum_2019_files/figure-html//widgets/widget_unnamed-chunk-15.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+template: what-are-competing-risks
+
+### First promotion vs. termination vs. first internal transfer
+
+<div id="htmlwidget-66aa6f6e722e3c5b1c7c" style="width:100%;height:400px;" class="widgetframe html-widget"></div>
+<script type="application/json" data-for="htmlwidget-66aa6f6e722e3c5b1c7c">{"x":{"url":"seattle_people_analytics_forum_2019_files/figure-html//widgets/widget_unnamed-chunk-16.html","options":{"xdomain":"*","allowfullscreen":false,"lazyload":false}},"evals":[],"jsHooks":[]}</script>
+
+---
+
+### Time to event is usually .controversy[unknowable] with competing risks
+
+#### Example: Promotion vs. termination
+
+--
+
+- If I get .teal[**terminated before my first promotion**], you'll never see how long it would have taken for me to get promoted
+
+--
+
+- You could guess how long it would have taken by looking at how long other people took to get promoted .orange[**assuming I'm just like them**]
+
+--
+
+- But I was .teal[**terminated before I got promoted**]...
+
+--
+
+### .center[.hero-shot[So I'm probably not like them.]]
+
+---
+
+# IN GENERAL
+
+## `if:`
+- The reasons that competing events occur are not independent because:
+
+--
+
+    - One event less likely to occur for reasons the other is likely to occur
+    
+--
+
+    - Both events likely to occur for similar reasons
+
+--
+
+## `then:`
+
+- Avg. time to event is **unidentified** (can't be estimated)
+
+---
+
+class: inverse, middle, center
+
+![Whoa](./whoa.gif)
+
+---
+
+class: inverse, middle, center
+
+![What are we gonna do about it](./what-are-we-gonna-do-about-it.gif)
+
+---
+
+name: cause-specific-cumulative-incidence-functions
+
+### .teal[**Cause-specific cumulative incidence functions**] (CIFs) to the rescue
+
+---
+
+template: cause-specific-cumulative-incidence-functions
+
+- CIFs don't assume independence among competing risks
+
+&lt;img src="seattle_people_analytics_forum_2019_files/figure-html/unnamed-chunk-17-1.png" width="100%" /&gt;
+
+---
+
+template: cause-specific-cumulative-incidence-functions
+
+- Cause-specific CIFs sum up to the total CIF
+
+&lt;img src="seattle_people_analytics_forum_2019_files/figure-html/unnamed-chunk-18-1.png" width="100%" /&gt;
+
+---
+
+# .controversy[BUT BEWARE]
+
+--
+
+- You need to define mutually exclusive terminal events for CIFs to work
+
+--
+
+- CIFs aren't helpful if events can re-occur
+    - 2nd, 3rd, etc. promotions and transfers
+
+--
+
+- CIFs assume that the event will happen someday
+    - Job requisitions can get closed as filled or un-filled
+    - Or hiring managers can forget to close them
+    
+--
+
+- Measuring effects of interventions under competing risks is hard
+
+---
+
+# But rejoice
+
+--
+
+- Event history analysis extends to deal with all those cases with:
+    - Cure models
+    - Recurring event models
+    - Multi-state models
+
+![Neo stopping bullets](./neo-stopping-bullets.gif)
+
+--
+
+- Research on intervention effects under competing risks continues
+
+---
+
+class: inverse, middle, center
+
+# .hero-shot[Thank you]
+    </textarea>
+<style data-target="print-only">@media screen {.remark-slide-container{display:block;}.remark-slide-scaler{box-shadow:none;}}</style>
+<script src="https://remarkjs.com/downloads/remark-latest.min.js"></script>
+<script>var slideshow = remark.create({
+"highlightStyle": "github",
+"highlightLines": true,
+"countIncrementalSlides": false
+});
+if (window.HTMLWidgets) slideshow.on('afterShowSlide', function (slide) {
+  window.dispatchEvent(new Event('resize'));
+});
+(function(d) {
+  var s = d.createElement("style"), r = d.querySelector(".remark-slide-scaler");
+  if (!r) return;
+  s.type = "text/css"; s.innerHTML = "@page {size: " + r.style.width + " " + r.style.height +"; }";
+  d.head.appendChild(s);
+})(document);
+
+(function(d) {
+  var el = d.getElementsByClassName("remark-slides-area");
+  if (!el) return;
+  var slide, slides = slideshow.getSlides(), els = el[0].children;
+  for (var i = 1; i < slides.length; i++) {
+    slide = slides[i];
+    if (slide.properties.continued === "true" || slide.properties.count === "false") {
+      els[i - 1].className += ' has-continuation';
+    }
+  }
+  var s = d.createElement("style");
+  s.type = "text/css"; s.innerHTML = "@media print { .has-continuation { display: none; } }";
+  d.head.appendChild(s);
+})(document);
+// delete the temporary CSS (for displaying all slides initially) when the user
+// starts to view slides
+(function() {
+  var deleted = false;
+  slideshow.on('beforeShowSlide', function(slide) {
+    if (deleted) return;
+    var sheets = document.styleSheets, node;
+    for (var i = 0; i < sheets.length; i++) {
+      node = sheets[i].ownerNode;
+      if (node.dataset["target"] !== "print-only") continue;
+      node.parentNode.removeChild(node);
+    }
+    deleted = true;
+  });
+})();
+// adds .remark-code-has-line-highlighted class to <pre> parent elements
+// of code chunks containing highlighted lines with class .remark-code-line-highlighted
+(function(d) {
+  const hlines = d.querySelectorAll('.remark-code-line-highlighted');
+  const preParents = [];
+  const findPreParent = function(line, p = 0) {
+    if (p > 1) return null; // traverse up no further than grandparent
+    const el = line.parentElement;
+    return el.tagName === "PRE" ? el : findPreParent(el, ++p);
+  };
+
+  for (let line of hlines) {
+    let pre = findPreParent(line);
+    if (pre && !preParents.includes(pre)) preParents.push(pre);
+  }
+  preParents.forEach(p => p.classList.add("remark-code-has-line-highlighted"));
+})(document);</script>
+
+<script>
+(function() {
+  var links = document.getElementsByTagName('a');
+  for (var i = 0; i < links.length; i++) {
+    if (/^(https?:)?\/\//.test(links[i].getAttribute('href'))) {
+      links[i].target = '_blank';
+    }
+  }
+})();
+</script>
+
+<script>
+slideshow._releaseMath = function(el) {
+  var i, text, code, codes = el.getElementsByTagName('code');
+  for (i = 0; i < codes.length;) {
+    code = codes[i];
+    if (code.parentNode.tagName !== 'PRE' && code.childElementCount === 0) {
+      text = code.textContent;
+      if (/^\\\((.|\s)+\\\)$/.test(text) || /^\\\[(.|\s)+\\\]$/.test(text) ||
+          /^\$\$(.|\s)+\$\$$/.test(text) ||
+          /^\\begin\{([^}]+)\}(.|\s)+\\end\{[^}]+\}$/.test(text)) {
+        code.outerHTML = code.innerHTML;  // remove <code></code>
+        continue;
+      }
+    }
+    i++;
+  }
+};
+slideshow._releaseMath(document);
+</script>
+<!-- dynamically load mathjax for compatibility with self-contained -->
+<script>
+(function () {
+  var script = document.createElement('script');
+  script.type = 'text/javascript';
+  script.src  = 'https://mathjax.rstudio.com/latest/MathJax.js?config=TeX-MML-AM_CHTML';
+  if (location.protocol !== 'file:' && /^https?:/.test(script.src))
+    script.src  = script.src.replace(/^https?:/, '');
+  document.getElementsByTagName('head')[0].appendChild(script);
+})();
+</script>
+  </body>
+</html>
